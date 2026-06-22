@@ -112,15 +112,30 @@ def add_card_border(ws, col_start, row_start, row_span, color="8C8C8C", style="d
         ws.cell(row=r, column=col_start).border = Border(left=border_style, right=border_style)
 
 
-def get_line_layout(num_lines):
-    if num_lines <= 4:
-        return 22, 6  # 60pt
-    elif num_lines <= 6:
-        return 20, 4  # 40pt
-    elif num_lines <= 8:
-        return 18, 3  # 30pt
-    else:
-        return 16, 2  # 20pt
+LAYOUTS = [
+    # (font_size, rows_per_line, max_len)
+    (22, 6, 9),
+    (22, 5, 9),
+    (20, 4, 10),
+    (18, 3, 12),
+    (16, 2, 14),
+    (14, 2, 16),
+    (14, 1, 16),
+    (12, 1, 18),
+    (10, 1, 22),
+    (9, 1, 25),
+    (8, 1, 28)
+]
+
+def find_best_layout(content_str):
+    for font_size, rows_per_line, max_len in LAYOUTS:
+        lines = split_long_lines(content_str, max_len)
+        total_rows = len(lines) * rows_per_line
+        if total_rows <= 26:
+            return font_size, rows_per_line, max_len, lines
+    # Fallback if no layout fits within 26 rows
+    lines = split_long_lines(content_str, 28)
+    return 8, 1, 28, lines
 
 
 def fill_card_front(ws, col_start, row_start, poem):
@@ -136,13 +151,11 @@ def fill_card_front(ws, col_start, row_start, poem):
     cell_seq.font = Font(name='宋体', size=12, color=COLOR_DECO, italic=True)
     cell_seq.alignment = Alignment(horizontal='center', vertical='center')
 
-    lines = poem["content"]
+    font_size, rows_per_line, _, lines = find_best_layout(poem.get('content', ''))
     num_lines = len(lines)
     if num_lines == 0:
         return
         
-    font_size, rows_per_line = get_line_layout(num_lines)
-
     total_content_rows = num_lines * rows_per_line
     available_rows = 26
     start_offset = (available_rows - total_content_rows) // 2
@@ -251,9 +264,7 @@ def main():
         setup_sheet_front(ws_front)
         for i, poem in enumerate(chunk):
             col, row = get_card_position_front(i)
-            poem_copy = poem.copy()
-            poem_copy['content'] = split_long_lines(poem.get('content', ''))
-            fill_card_front(ws_front, col, row, poem_copy)
+            fill_card_front(ws_front, col, row, poem)
 
         ws_back = wb.create_sheet(f"背面({c_start}-{c_end})")
         setup_sheet_back(ws_back)
