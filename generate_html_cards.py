@@ -4,6 +4,15 @@ import re
 import argparse
 import sys
 
+def split_clause_by_limit(clause, limit):
+    """Force split a single clause by character count so that no line exceeds limit."""
+    lines = []
+    if len(clause) <= limit:
+        return [clause]
+    for i in range(0, len(clause), limit):
+        lines.append(clause[i:i+limit])
+    return lines
+
 def get_poem_lines(content, max_chars_per_line=8):
     """Split poem content lines by newline and split long lines at punctuation to fit within max_chars_per_line."""
     raw_lines = content.strip().split('\n')
@@ -12,48 +21,54 @@ def get_poem_lines(content, max_chars_per_line=8):
         r_line = r_line.strip()
         if not r_line:
             continue
-        if len(r_line) <= max_chars_per_line:
-            lines.append(r_line)
-        else:
-            # Split by punctuation (commas, periods, semicolons, etc.)
-            parts = re.split(r'([，。；？！、])', r_line)
-            current = ""
-            for i in range(0, len(parts), 2):
-                part = parts[i]
-                punctuation = parts[i+1] if i+1 < len(parts) else ""
-                chunk = part + punctuation
-                if not chunk:
-                    continue
+        # Split by punctuation (commas, periods, semicolons, exclamation marks, question marks, and colons)
+        parts = re.split(r'([，。；？！、：])', r_line)
+        current = ""
+        for i in range(0, len(parts), 2):
+            part = parts[i]
+            punctuation = parts[i+1] if i+1 < len(parts) else ""
+            chunk = part + punctuation
+            if not chunk:
+                continue
+            
+            if len(chunk) > max_chars_per_line:
+                if current:
+                    lines.append(current)
+                    current = ""
+                # Force split the long chunk by character limit
+                lines.extend(split_clause_by_limit(chunk, max_chars_per_line))
+            else:
                 if len(current) + len(chunk) <= max_chars_per_line:
                     current += chunk
                 else:
                     if current:
                         lines.append(current)
                     current = chunk
-            if current:
-                lines.append(current)
+        if current:
+            lines.append(current)
     return lines
 
 def format_poem(content):
     """Dynamically determine the best line-split limit and font size to fit the card dimensions."""
-    # Test layout steps to see which font size and line split count fits best within 320pt height budget.
+    # Test layout steps to see which font size and line split count fits best within 340pt height budget.
+    # Max content width is 164pt (5.8cm), so S * limit <= 164.
     layouts = [
-        (8, "21pt"),
-        (10, "18pt"),
-        (12, "16pt"),
-        (14, "14pt"),
-        (16, "12pt"),
-        (20, "10pt"),
-        (24, "8pt")
+        (8, "20pt"),    # 20 * 8 = 160 <= 164
+        (10, "16pt"),   # 16 * 10 = 160 <= 164
+        (12, "13pt"),   # 13 * 12 = 156 <= 164
+        (14, "11pt"),   # 11 * 14 = 154 <= 164
+        (16, "10pt"),   # 10 * 16 = 160 <= 164
+        (20, "8pt")     # 8 * 20 = 160 <= 164
     ]
     for limit, font_size in layouts:
         lines = get_poem_lines(content, limit)
         fs_pt = float(font_size.replace("pt", ""))
         line_h = fs_pt * 1.4 + 3  # 1.4 line-height + 3pt line gap
         total_h = len(lines) * line_h
-        if total_h <= 320:  # Card height is 14.85cm ≈ 387pt, content space ≈ 350pt
+        if total_h <= 340:  # Card height is 14.85cm ≈ 387pt, content space ≈ 350pt
             return lines, font_size
-    return get_poem_lines(content, 24), "8pt"
+    return get_poem_lines(content, 20), "8pt"
+
 
 def format_author(author_str):
     """Format dynasty and author string standardizing to '[朝代] 作者' format."""
@@ -70,13 +85,21 @@ def format_author(author_str):
 
 def format_title_size(title):
     """Adjust font size dynamically for long titles to look balanced."""
-    length = len(title)
-    if length <= 6:
+    parts = title.split("（")
+    lines = [parts[0]] + ["（" + p for p in parts[1:] if p]
+    max_len = max(len(l) for l in lines) if lines else 0
+        
+    if max_len <= 6:
         return "25pt"
-    elif length <= 10:
+    elif max_len <= 10:
         return "21pt"
     else:
         return "18pt"
+
+def format_title_html(title):
+    """Format title string to break at Chinese parenthesis for layout styling."""
+    return title.replace("（", "<br>（")
+
 
 def generate_html(poems, output_path):
     # CSS template matching perfectly (3x2 vertical grid layout)
@@ -355,12 +378,13 @@ def generate_html(poems, output_path):
             if i < len(chunk) and chunk[i].get('seq', 0) > 0:
                 p = chunk[i]
                 title_fs = format_title_size(p['title'])
+                title_html = format_title_html(p['title'])
                 author_formatted = format_author(p['author'])
                 html.append(f'    <div class="card">')
                 html.append(f'      <div class="card-back">')
                 html.append(f'        <div class="back-seq">NO. {p["seq"]:03d}</div>')
                 html.append(f'        <div class="back-deco">—— ✦ ——</div>')
-                html.append(f'        <div class="back-title" style="font-size: {title_fs};">{p["title"]}</div>')
+                html.append(f'        <div class="back-title" style="font-size: {title_fs};">{title_html}</div>')
                 html.append(f'        <div class="back-author">{author_formatted}</div>')
                 html.append(f'        <div class="back-deco">— —</div>')
                 html.append(f'        <div class="back-page">《课本》{p["page"]}</div>')
