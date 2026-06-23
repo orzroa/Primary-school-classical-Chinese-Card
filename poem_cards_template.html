@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小学古诗文卡片 - HTML高精度满幅排版模板 (手动双面对齐版)</title>
+<style>
+  /* 全局重置与满幅打印优化 */
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  body {
+    background-color: #f5f5f5;
+    font-family: "SimSun", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif;
+    color: #1a1a1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 非打印区域样式（仅在浏览器中显示） */
+  .no-print {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  .no-print h1 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #2c3e50;
+  }
+  .no-print ol {
+    margin-left: 20px;
+    line-height: 1.6;
+    color: #555;
+  }
+  .no-print .btn {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 10px 20px;
+    background: #555;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+  }
+  .no-print .btn:hover {
+    background: #333;
+  }
+
+  /* 打印页面容器 (完全对应 A4 纵向尺寸：21.0cm x 29.7cm) */
+  .page {
+    width: 21.0cm;
+    height: 29.7cm;
+    background: #ffffff;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(3, 7.0cm);
+    grid-template-rows: repeat(2, 14.85cm);
+    /* 在屏幕显示时加上阴影，方便预览 */
+    margin: 30px auto;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+  }
+
+  /* ── 卡片外框定义 (3x2 竖卡布局，7.0cm x 14.85cm) ── */
+  .card {
+    width: 7.0cm;
+    height: 14.85cm;
+    position: relative;
+    border-right: 1px dashed #999;
+    border-bottom: 1px dashed #999;
+  }
+  /* 最后一列去掉右边框 */
+  .card:nth-child(3n) {
+    border-right: none;
+  }
+  /* 第二行去掉下边框 */
+  .card:nth-child(n+4) {
+    border-bottom: none;
+  }
+
+  /* ── 卡片正反面样式 ── */
+  .card-front {
+    width: 100%;
+    height: 100%;
+    padding: 0.6cm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+  /* 正面装饰性灰色框 */
+  .card-front::before {
+    content: "";
+    position: absolute;
+    top: 0.3cm;
+    bottom: 0.3cm;
+    left: 0.3cm;
+    right: 0.3cm;
+    border: 1px solid #ccc;
+    pointer-events: none;
+  }
+
+  .card-back {
+    width: 100%;
+    height: 100%;
+    padding: 0.6cm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+  /* 背面经典双线内框 */
+  .card-back::before {
+    content: "";
+    position: absolute;
+    top: 0.3cm;
+    bottom: 0.3cm;
+    left: 0.3cm;
+    right: 0.3cm;
+    border: 3px double #555;
+    pointer-events: none;
+  }
+
+  /* 手动双面打印：背面所有卡片文字方向保持正向，无需旋转 */
+
+
+  /* ── 诗文排版 ── */
+  .seq-no {
+    font-size: 13pt;
+    color: #555;
+    font-style: italic;
+    font-weight: bold;
+    height: 1.0cm;
+    display: flex;
+    align-items: center;
+  }
+  .poem-body {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+  .poem-line {
+    font-size: 21pt;
+    font-weight: bold;
+    color: #111;
+    line-height: 1.4;
+    text-align: center;
+    margin: 3px 0;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── 背面信息排版 ── */
+  .back-seq {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    font-family: Arial, sans-serif;
+    letter-spacing: 0.05em;
+  }
+  .back-deco {
+    font-size: 12pt;
+    color: #555;
+    margin-top: 2px;
+  }
+  .back-title {
+    font-size: 25pt;
+    font-weight: bold;
+    color: #000;
+    text-align: center;
+    line-height: 1.3;
+    max-width: 90%;
+    word-break: break-all;
+  }
+  .back-author {
+    font-size: 15pt;
+    color: #555;
+    font-weight: normal;
+  }
+  .back-page {
+    font-size: 11pt;
+    color: #777;
+    font-weight: normal;
+  }
+
+  /* 打印时隐藏预览辅助组件 */
+  @media print {
+    body {
+      background-color: #fff;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .page {
+      margin: 0 !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 非打印控制台 -->
+  <div class="no-print">
+    <h1>小学古诗文卡片 (HTML 纵向 A4 手动双面对齐版)</h1>
+    <ol>
+      <li><b>排版已更新为 3×2 全竖卡布局</b>：每页包含 6 张等尺寸竖置卡片（宽 7.0cm × 高 14.85cm），无缝利用整张 A4 纸。</li>
+      <li><b>背面已完成左右翻转对齐</b>：背面卡片顺序调整为 3、2、1、6、5、4，且文字方向保持正常，以完美契合左右翻面（长边翻转）手动双面打印。</li>
+      <li><b>打印步骤</b>：点击下方的“直接打印PDF”按钮或按快捷键 <code>Ctrl + P</code>。</li>
+      <li><b>重要打印设置</b>：
+        <ul>
+          <li>方向：<b>纵向 (Portrait)</b></li>
+          <li>纸张大小：<b>A4</b></li>
+          <li>页边距：必须设置为<b>“无” (None)</b> 以获得最佳比例。</li>
+          <li>缩放：<b>实际大小 / 默认 (100% / Default)</b></li>
+          <li>背景图形 (Background graphics)：<b>勾选</b></li>
+        </ul>
+      </li>
+    </ol>
+    <button class="btn" onclick="window.print()">直接打印 / 另存为 PDF</button>
+  </div>
+
+  <!-- ── 页面 1：正面（诗词内容） ── -->
+  <div class="page page-front">
+    <!-- 卡片 1 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 1 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">鹅，鹅，鹅，</div>
+          <div class="poem-line">曲项向天歌。</div>
+          <div class="poem-line">白毛浮绿水，</div>
+          <div class="poem-line">红掌拨清波。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片 2 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 2 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">江南可采莲，</div>
+          <div class="poem-line">莲叶何田田。</div>
+          <div class="poem-line">鱼戏莲叶间。</div>
+          <div class="poem-line">鱼戏莲叶东，</div>
+          <div class="poem-line">鱼戏莲叶西。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片 3 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 3 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">远看山有色，</div>
+          <div class="poem-line">近听水无声。</div>
+          <div class="poem-line">春去花还在，</div>
+          <div class="poem-line">人来鸟不惊。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片 4 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 4 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">锄禾日当午，</div>
+          <div class="poem-line">汗滴禾下土。</div>
+          <div class="poem-line">谁知盘中餐，</div>
+          <div class="poem-line">粒粒皆辛苦。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片 5 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 5 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">小时不识月，</div>
+          <div class="poem-line">呼作白玉盘。</div>
+          <div class="poem-line">又疑瑶台镜，</div>
+          <div class="poem-line">飞在青云端。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 卡片 6 -->
+    <div class="card">
+      <div class="card-front">
+        <div class="seq-no">· 6 ·</div>
+        <div class="poem-body">
+          <div class="poem-line">解落三秋叶，</div>
+          <div class="poem-line">能开二月花。</div>
+          <div class="poem-line">过江千尺浪，</div>
+          <div class="poem-line">入竹万竿斜。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── 页面 2：背面（题目信息） ── -->
+  <div class="page page-back">
+    <!-- 卡片 3 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 003</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">画</div>
+        <div class="back-author">[唐] 王维</div>
+        <div class="back-page">《课本》P6</div>
+      </div>
+    </div>
+
+    <!-- 卡片 2 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 002</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">江南</div>
+        <div class="back-author">[汉] 乐府</div>
+        <div class="back-page">《课本》P4</div>
+      </div>
+    </div>
+
+    <!-- 卡片 1 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 001</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">咏鹅</div>
+        <div class="back-author">[唐] 骆宾王</div>
+        <div class="back-page">《课本》P2</div>
+      </div>
+    </div>
+
+    <!-- 卡片 6 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 006</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">风</div>
+        <div class="back-author">[唐] 李峤</div>
+        <div class="back-page">《课本》P12</div>
+      </div>
+    </div>
+
+    <!-- 卡片 5 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 005</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">古朗月行</div>
+        <div class="back-author">[唐] 李白</div>
+        <div class="back-page">《课本》P10</div>
+      </div>
+    </div>
+
+    <!-- 卡片 4 背面 -->
+    <div class="card">
+      <div class="card-back">
+        <div class="back-seq">NO. 004</div>
+        <div class="back-deco">—— ✦ ——</div>
+        <div class="back-title">悯农</div>
+        <div class="back-author">[唐] 李绅</div>
+        <div class="back-page">《课本》P8</div>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+</html>

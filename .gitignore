@@ -8,3 +8,7 @@ venv/
 
 # Generated Excel outputs
 *.xlsx
+
+# Generated HTML outputs
+poem_cards_final.html
+
